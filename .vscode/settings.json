@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        ".clang-format": "yaml",
+        "task_main.h": "c",
+        "task_gpio.h": "c",
+        "main.h": "c"
+    }
+}
