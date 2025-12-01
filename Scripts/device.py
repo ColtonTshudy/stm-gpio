@@ -2,6 +2,7 @@ import serial
 import time
 import inspect
 from datetime import datetime
+from typing import List
 
 
 class NetlistCard:
@@ -129,11 +130,31 @@ class NetlistCard:
 if __name__ == "__main__":
     from serial_scan import PortScan
 
+    # port_scanner = PortScan()
+    # port_scanner.scan()
+    # device_path = port_scanner.get_first_device_by_pid(49239)
+
+    # Get list of all cards with the same VID / PID
+    cards: List[NetlistCard] = []
+
     port_scanner = PortScan()
     port_scanner.scan()
-    device_path = port_scanner.get_first_device_by_pid(49239)
+    device_paths = port_scanner.get_all_devices_by_pid(49239)
 
-    card1 = NetlistCard(device_path)
+    for device_path in device_paths:
+        cards.append(NetlistCard(device_path))
+    time.sleep(0.5)  # wait for cards to boot up
+
+    cards = sorted(cards, key=lambda card: card._id)  # put the cards in order
+
+    # identify all cards
+    for card in cards:
+        print(card._id)  # print id of all cards
+        card.reset_gpio()  # reset all cards
+    time.sleep(0.5)  # let gpio resets settle
+
+    # Select a specific card to test
+    card1 = cards[0]
     print(f"id: {card1._id}")
     time.sleep(1)  # Let the LED finish blinking (aesthetics only)
     card1.set_gpio(1)
@@ -141,14 +162,39 @@ if __name__ == "__main__":
     print(card1.read_gpio())
 
     card1.reset_gpio()
-    for i in range(1, 73):
-        card1.set_gpio(i)
-        print(f"set GPIO {i}")
-        time.sleep(0.01)
-        print(card1.read_gpio())
-        if card1.read_gpio()[i - 1] != 1:
-            print("Fail! ==========================")
-            time.sleep(1000)
-        else:
-            print("Pass")
+    # for i in range(1, 73):
+    #     card1.set_gpio(i)
+    #     print(f"set GPIO {i}")
+    #     time.sleep(0.01)
+    #     print(card1.read_gpio())
+    #     if card1.read_gpio()[i - 1] != 1:
+    #         print("Fail! ==========================")
+    #         time.sleep(1000)
+    #     else:
+    #         print("Pass")
+    #     card1.reset_gpio()
+    #     input()
+
+    row = []
+    ez_view = []
+    for pin in range(1, 73):
         card1.reset_gpio()
+        time.sleep(0.1)
+        card1.set_gpio(pin)
+        print(f"Setting pin {pin} on card {card1._id}")
+        input()
+
+        # card1.set_led(1)
+        # time.sleep(0.005)
+
+        gpio_read_list = card1.read_gpio()  # read sub card's GPIO
+
+        row.extend(gpio_read_list)
+        gpio_read_list.insert(0, card1._id)
+        ez_view.append(gpio_read_list)
+        # sub_card.blink_led()
+        # card1.set_led(0)
+
+        print(f"Card {ez_view[0][0]}: {ez_view[0][1:]}")
+        input()
+        # time.sleep(1000)

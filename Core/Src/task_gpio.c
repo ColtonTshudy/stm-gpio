@@ -88,7 +88,45 @@ static GPIO_Pin_t get_port_and_pin_from_io_number(uint8_t io_number)
     return IO_PINS[io_number];
 }
 
-static void configure_pin_input_pulldown(GPIO_Pin_t gpio)
+/**
+ * @brief Turn on pull-down resistors for an IO pin
+ *
+ * @param gpio
+ */
+static void configure_pin_pulldown(GPIO_Pin_t gpio)
+{
+    GPIO_TypeDef *port = gpio.port;
+    uint8_t pin = gpio.pin;
+
+    // Leave mode unchanged
+
+    // Set pull-down resistor (10)
+    port->PUPDR &= ~(0x3 << (pin * 2));
+    port->PUPDR |= (0x2 << (pin * 2));
+}
+
+/**
+ * @brief Turn off pull-up/down resistors for an IO pin (leave floating)
+ *
+ * @param gpio
+ */
+static void configure_pin_floating(GPIO_Pin_t gpio)
+{
+    GPIO_TypeDef *port = gpio.port;
+    uint8_t pin = gpio.pin;
+
+    // Leave mode unchanged
+
+    // No pull-up/pull-down (00)
+    port->PUPDR &= ~(0x3 << (pin * 2));
+}
+
+/**
+ * @brief Configure all IO pins as inputs without any pull-up/down resistors
+ *
+ * @param gpio
+ */
+static void configure_pin_input_floating(GPIO_Pin_t gpio)
 {
     GPIO_TypeDef *port = gpio.port;
     uint8_t pin = gpio.pin;
@@ -96,9 +134,8 @@ static void configure_pin_input_pulldown(GPIO_Pin_t gpio)
     // Set mode to input (00)
     port->MODER &= ~(0x3 << (pin * 2));
 
-    // Set pull-down resistor (10)
+    // No pull-up/pull-down (00)
     port->PUPDR &= ~(0x3 << (pin * 2));
-    port->PUPDR |= (0x2 << (pin * 2));
 }
 
 // Configure a single pin as output push-pull
@@ -114,9 +151,8 @@ static void configure_pin_output_high(GPIO_Pin_t gpio)
     // Set output type to push-pull (0)
     port->OTYPER &= ~(0x1 << pin);
 
-    // Set speed to medium (01) - adjust as needed
+    // Set speed to slow (00)
     port->OSPEEDR &= ~(0x3 << (pin * 2));
-    port->OSPEEDR |= (0x0 << (pin * 2));
 
     // No pull-up/pull-down (00)
     port->PUPDR &= ~(0x3 << (pin * 2));
@@ -141,13 +177,19 @@ uint8_t GPIO_GetID()
 /**
  * @brief Sets a circuit card pin (from 1-72) to OUTPUT HIGH
  *
- * @param io_number
+ * @param io_number GPIO to set, 1 to 72
  */
 void GPIO_SetOutput(uint8_t io_number)
 {
     configure_pin_output_high(get_port_and_pin_from_io_number(io_number - 1));
 }
 
+/**
+ * @brief Request the LED to be blinked X times (non-blocking)
+ *
+ * @param blink_led_x_times number of blinks to perform (one LED blink = two LED toggles,
+ * so the LED will be left in whatever state it was already in before the blink operatoin)
+ */
 void GPIO_BlinkLED(uint8_t blink_led_x_times)
 {
     static uint32_t last_blink_time = 0;
@@ -171,22 +213,46 @@ void GPIO_BlinkLED(uint8_t blink_led_x_times)
 }
 
 /**
- * @brief Set all GPIO pins to input mode with pulldown
+ * @brief Set all GPIO pins to input mode with no pull-up/down resistors (floating)
  *
  */
-void GPIO_SetAllInputs()
+void GPIO_SetAllToInputFloating()
 {
     // Set all pins to input with pulldown
     for (uint8_t i = 0; i < NUM_IO_PINS; i++)
     {
-        configure_pin_input_pulldown(IO_PINS[i]);
+        configure_pin_input_floating(IO_PINS[i]);
+    }
+}
+
+/**
+ * @brief Set pull-down resistors for all GPIO pins
+ */
+void GPIO_SetAllToPulldown()
+{
+    // Set all pins to input with pulldown
+    for (uint8_t i = 0; i < NUM_IO_PINS; i++)
+    {
+        configure_pin_pulldown(IO_PINS[i]);
+    }
+}
+
+/**
+ * @brief Unset pull-up/down resistors for all GPIO pins (leave floating)
+ */
+void GPIO_SetAllToFloating()
+{
+    // Set all pins to input with pulldown
+    for (uint8_t i = 0; i < NUM_IO_PINS; i++)
+    {
+        configure_pin_floating(IO_PINS[i]);
     }
 }
 
 /**
  * @brief Read all IO pins and return their states in an array
  *
- * @param states
+ * @param states buffer (must be long enough to store all 72 IO states)
  */
 void GPIO_ReadAllPins(uint8_t *states)
 {

@@ -14,6 +14,8 @@ typedef struct
 
 uint8_t GPIO_GetID();
 void GPIO_SetOutput(uint8_t);
-void GPIO_SetAllInputs();
+void GPIO_SetAllToInputFloating();
+void GPIO_SetAllToFloating();
+void GPIO_SetAllToPulldown();
 void GPIO_BlinkLED(uint8_t);
 void GPIO_ReadAllPins(uint8_t *);

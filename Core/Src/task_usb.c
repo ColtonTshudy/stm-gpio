@@ -48,10 +48,14 @@ uint8_t ExtractNumber(uint8_t *buf)
 
 void ParseCommand(uint8_t *buf, uint32_t len)
 {
-    uint8_t rc = 99;
+    uint8_t rc = 99; // catch-all return code
     uint32_t end_flag_len = strlen(END_FLAG);
 
-    //-id
+    /**
+     * @brief Read the card's ID GPIO pins
+     * @note -id
+     * @return returns success code and 1-byte id, 0 to 127
+     */
     if (strncmp((char *)buf, "-id", 3) == 0 && len == 3 + end_flag_len)
     {
         uint8_t id = GPIO_GetID();
@@ -60,7 +64,12 @@ void ParseCommand(uint8_t *buf, uint32_t len)
         uint8_t data[] = {id};
         SendResponse(rc, data, 1);
     }
-    //-sp XX
+    /**
+     * @brief Turn on (1) or off (0) pulldown resistors
+     * @note -sp X
+     * @arg X is a byte, 1 to 72
+     * @return returns success code and X to confirm selection
+     */
     else if (strncmp((char *)buf, "-sp", 3) == 0 && len > 4 + end_flag_len)
     {
         // uint8_t io_number = ExtractNumber(buf + 4);
@@ -72,21 +81,54 @@ void ParseCommand(uint8_t *buf, uint32_t len)
         uint8_t data[] = {io_number};
         SendResponse(rc, data, 1);
     }
-    //-rst
+    /**
+     * @brief Resets all pins to input mode with no pulldowns configured (floating)
+     * @note -rst
+     * @return returns success code
+     */
     else if (strncmp((char *)buf, "-rst", 4) == 0 && len == 4 + end_flag_len)
     {
-        GPIO_SetAllInputs();
+        GPIO_SetAllToInputFloating();
         rc = 1;
         SendResponse(rc, NULL, 0);
     }
-    //-blink
+    /**
+     * @brief Turn on (1) or off (0) pulldown resistors
+     * @note -pd X
+     * @arg X is a byte, 0 or 1
+     * @return returns success code and X to confirm selection
+     */
+    else if (strncmp((char *)buf, "-pd", 4) == 0 && len == 5 + end_flag_len)
+    {
+        if (buf[4])
+        {
+            GPIO_SetAllToPulldown();
+        }
+        else
+        {
+            GPIO_SetAllToFloating();
+        }
+        rc = 1;
+        uint8_t data[] = {buf[4]};
+        SendResponse(rc, data, 1);
+    }
+    /**
+     * @brief Blink the card's LED 5 times
+     * @note -blink
+     * @return returns success code
+     */
     else if (strncmp((char *)buf, "-blink", 6) == 0 && len == 6 + end_flag_len)
     {
         rc = 1;
         SendResponse(rc, NULL, 0);
         GPIO_BlinkLED(5);
     }
-    //-led X (enable = 1, disable = 0)
+    /**
+     * @brief Turn on (1) or off (0) card's onboard LED
+     * @note -led X
+     * @arg X is a byte, 0 or 1
+     * @return returns success code and X to confirm selection
+     */
     else if (strncmp((char *)buf, "-led", 4) == 0 && len == 6 + end_flag_len)
     {
         uint8_t led_state = buf[5];
@@ -95,7 +137,11 @@ void ParseCommand(uint8_t *buf, uint32_t len)
         uint8_t data[] = {led_state};
         SendResponse(rc, data, 1);
     }
-    //-read
+    /**
+     * @brief Read all IO states (excluding LED and ID GPIO)
+     * @note -read
+     * @return returns success code and 72 bytes (each is 0 or 1)
+     */
     else if (strncmp((char *)buf, "-read", 5) == 0 && len == 5 + end_flag_len)
     {
         uint8_t data[NUM_IO_PINS];
