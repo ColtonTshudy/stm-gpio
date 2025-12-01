@@ -22,6 +22,7 @@ class NetlistCard:
     BLINK_LED = "-blink"
     SET_LED = "-led"
     READ_PINS = "-read"
+    SET_PULLDOWN = "-sp"
 
     def __init__(self, device_path, baudrate=115200):
         self.baudrate = baudrate
@@ -55,6 +56,22 @@ class NetlistCard:
         if rc != 1:
             raise ValueError(f"Reset command responded with return code {rc}")
         self.set_led(0)
+        return rc
+
+    def set_pulldown(self, pulldown_enable):
+        rc, pulldown_enable_set = self._send_command(
+            self.SET_PULLDOWN, bytes([pulldown_enable])
+        )
+        pulldown_enable_set = int.from_bytes(
+            pulldown_enable_set, byteorder="big", signed=False
+        )
+        if rc != 1:
+            raise ValueError(f"Set pulldown command responded with return code {rc}")
+        if pulldown_enable_set != pulldown_enable:
+            raise ValueError(
+                f"Set pulldown command state mismatch! (tried setting {pulldown_enable}, got {pulldown_enable_set})"
+            )
+        self.set_led(1)
         return rc
 
     def get_id(self):
@@ -128,6 +145,7 @@ class NetlistCard:
 
 
 if __name__ == "__main__":
+    # TODO: Update test code to work with new pulldown enable/disable scheme
     from serial_scan import PortScan
 
     # port_scanner = PortScan()
